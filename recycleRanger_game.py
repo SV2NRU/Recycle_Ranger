@@ -32,7 +32,7 @@ gameState = "Playing"
 mainMenu = True
 levelIndex = 0
 maxLevel = len(levelList) - 1
-score = 0
+CansScore = 0
 
 # Colors
 WHITE = (255, 255, 255)
@@ -338,6 +338,9 @@ restartButton = Button(screenWidth // 2 - 50, screenHeight // 2 + 100, restartIm
 startButton = Button(screenWidth // 2 - 340, screenHeight // 2, startImage)
 exitButton = Button(screenWidth // 2 + 70, screenHeight // 2, exitImage)
 
+# Start counter time
+startTime = pygame.time.get_ticks()
+
 # Check if levelIndex is inside the levelList and start the game
 if levelIndex < len(levelList):
     world = World(levelList[levelIndex])
@@ -360,11 +363,14 @@ while runGame:
     else:
         world.drawWorld(screen)          
         if gameState == "Playing":
+            elapsedTime = (pygame.time.get_ticks() - startTime) / 1000  # Timer - Convert to seconds
             enemyGroup.update()
             if pygame.sprite.spritecollide(player, cansGroup, True):
                 pickupSound.play()
-                score += 1
-            drawText('Score: ' + str(score), scoreFont, WHITE, 40, 10)
+                CansScore += 1
+            drawText('Score: ' + str(CansScore), scoreFont, WHITE, 40, 10)
+            drawText(f"Time: {elapsedTime:.1f}", scoreFont, WHITE, 200, 10)
+            
         
         enemyGroup.draw(screen)
         garbageGroup.draw(screen)
@@ -378,7 +384,7 @@ while runGame:
                 world = resetLevel(levelIndex)
                 player = Player(tileSize, screenHeight-100)
                 gameState = "Playing"
-                score = 0
+                CansScore = 0
 
         if gameState == "NextLevel":
             levelIndex += 1
@@ -388,12 +394,15 @@ while runGame:
                 gameState = "Playing"
             else:
                 drawText('YOU WIN', msgFont, BLUE, screenWidth // 2 - 140, screenHeight // 2)
-                drawText('Score: ' + str(score), scoreMsgFont, BROWN, screenWidth // 2 - 120, screenHeight // 2 - 80)
+                drawText('Score: ' + str(CansScore), scoreMsgFont, BROWN, screenWidth // 2 - 120, screenHeight // 2 - 80)
+                drawText(f"Time: {elapsedTime:.1f}", scoreMsgFont, BROWN, screenWidth // 2 - 120, screenHeight // 2 - 180)
                 if restartButton.draw():
                     levelIndex = 0
                     world = resetLevel(levelIndex)
                     player = Player(tileSize, screenHeight-100)
-                    score = 0
+                    CansScore = 0
+                    elapsedTime = 0 # Reset Timer
+                    startTime = pygame.time.get_ticks() # Reset timer
                     gameState = "Playing"
     
     for event in pygame.event.get():
