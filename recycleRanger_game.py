@@ -1,4 +1,5 @@
 import pygame
+import sys
 import random
 from pygame.locals import *
 from pygame import mixer
@@ -33,12 +34,16 @@ mainMenu = True
 levelIndex = 0
 maxLevel = len(levelList) - 1
 cansScore = 0
+playerName = ""
 
 # Colors
 WHITE = (255, 255, 255)
 BLUE = (0, 0, 255)
 BROWN = (125, 25, 3)
 RED = (255, 0, 0)
+
+# User Input Rect
+uiRect = pygame.Rect(400, 400, 320, 50)
 
 # Create game window
 screen = pygame.display.set_mode(SCREENSIZE)
@@ -76,6 +81,22 @@ def resetLevel(levelIndex):
 def drawText(text, font, color, x, y):
     textImage = font.render(text, True, color)
     screen.blit(textImage, (x, y))
+
+def inputName(playerName):
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()  
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_BACKSPACE:
+                playerName = playerName[:-1]
+            else:
+                playerName += event.unicode
+    pygame.draw.rect(screen, WHITE, uiRect)
+    inputSurface = scoreFont.render(playerName, True, BLUE)
+    screen.blit(inputSurface, (uiRect.x+5, uiRect.y+5))
+    uiRect.w = max(100, inputSurface.get_width()+10)
+    return playerName
 
 
 ########## BUTTON ##########
@@ -338,9 +359,6 @@ restartButton = Button(screenWidth // 2 - 50, screenHeight // 2 + 100, restartIm
 startButton = Button(screenWidth // 2 - 340, screenHeight // 2, startImage)
 exitButton = Button(screenWidth // 2 + 70, screenHeight // 2, exitImage)
 
-# Start counter time
-startTime = pygame.time.get_ticks()
-
 # Check if levelIndex is inside the levelList and start the game
 if levelIndex < len(levelList):
     world = World(levelList[levelIndex])
@@ -354,10 +372,13 @@ while runGame:
 
     screen.blit(bgImage, (0, 0))
     drawText('Recycle Ranger', msgFont, BROWN, 130, 150)
+    playerName = inputName(playerName)
 
     if mainMenu == True:
         if startButton.draw():
             mainMenu = False
+            # Start counter time
+            startTime = pygame.time.get_ticks()
         if exitButton.draw():
             runGame = False
     else:
@@ -370,6 +391,7 @@ while runGame:
                 cansScore += 1
             drawText('Score: ' + str(cansScore), scoreFont, WHITE, 40, 10)
             drawText(f"Time: {elapsedTime:.1f}", scoreFont, WHITE, 200, 10)
+            drawText('Player: ' + playerName, scoreFont, WHITE, 400, 10)
             
         
         enemyGroup.draw(screen)
@@ -412,3 +434,4 @@ while runGame:
     pygame.display.update()
     
 pygame.quit()
+sys.exit()
