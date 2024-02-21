@@ -32,7 +32,7 @@ gameState = "Playing"
 mainMenu = True
 levelIndex = 0
 maxLevel = len(levelList) - 1
-CansScore = 0
+cansScore = 0
 
 # Colors
 WHITE = (255, 255, 255)
@@ -367,8 +367,8 @@ while runGame:
             enemyGroup.update()
             if pygame.sprite.spritecollide(player, cansGroup, True):
                 pickupSound.play()
-                CansScore += 1
-            drawText('Score: ' + str(CansScore), scoreFont, WHITE, 40, 10)
+                cansScore += 1
+            drawText('Score: ' + str(cansScore), scoreFont, WHITE, 40, 10)
             drawText(f"Time: {elapsedTime:.1f}", scoreFont, WHITE, 200, 10)
             
         
@@ -384,7 +384,7 @@ while runGame:
                 world = resetLevel(levelIndex)
                 player = Player(tileSize, screenHeight-100)
                 gameState = "Playing"
-                CansScore = 0
+                cansScore = 0
 
         if gameState == "NextLevel":
             levelIndex += 1
@@ -394,13 +394,13 @@ while runGame:
                 gameState = "Playing"
             else:
                 drawText('YOU WIN', msgFont, BLUE, screenWidth // 2 - 140, screenHeight // 2)
-                drawText('Score: ' + str(CansScore), scoreMsgFont, BROWN, screenWidth // 2 - 120, screenHeight // 2 - 80)
+                drawText('Score: ' + str(cansScore), scoreMsgFont, BROWN, screenWidth // 2 - 120, screenHeight // 2 - 80)
                 drawText(f"Time: {elapsedTime:.1f}", scoreMsgFont, BROWN, screenWidth // 2 - 120, screenHeight // 2 - 180)
                 if restartButton.draw():
                     levelIndex = 0
                     world = resetLevel(levelIndex)
                     player = Player(tileSize, screenHeight-100)
-                    CansScore = 0
+                    cansScore = 0
                     elapsedTime = 0 # Reset Timer
                     startTime = pygame.time.get_ticks() # Reset timer
                     gameState = "Playing"
