@@ -81,6 +81,7 @@ def resetLevel(levelIndex):
     garbageGroup.empty()
     recycleBinGroup.empty()
     cansGroup.empty()
+    platformGroup.empty()
     world = World(levelList[levelIndex])
     return world
 
@@ -228,6 +229,7 @@ class Player():
         dif_x = 0
         dif_y = 0
         walkAnimation = 5
+        collisionThreshold = 20
 
         if gameState == "Playing":
             # Player movement
@@ -299,7 +301,27 @@ class Player():
             # Check for collision with recycle bin
             if pygame.sprite.spritecollide(self, recycleBinGroup, False):
                 gameState = "NextLevel"
-                    
+
+            # Check for collision with moving platforms
+            for platform in platformGroup:
+                # Check for collision in x axis
+                if platform.rect.colliderect(self.rect.x + dif_x, self.rect.y, self.width, self.height):
+                    dif_x = 0
+                # Check for collision in x axis
+                if platform.rect.colliderect(self.rect.x, self.rect.y + dif_y, self.width, self.height):
+                    # Check if player is below the platform
+                    if abs((self.rect.top + dif_y) - platform.rect.bottom) < collisionThreshold:
+                        self.jump = 0
+                        dif_y = platform.rect.bottom - self.rect.top # Stop because player hit platform
+                    # Check if player is above platform
+                    elif abs((self.rect.bottom + dif_y) - platform.rect.top) < collisionThreshold:
+                        self.rect.bottom = platform.rect.top - 1 # Stop because player standing on the platform
+                        self.jump = 0
+                        self.isJump = False
+                    # Move player together with platform
+                    if platform.moveX != 0:
+                        self.rect.x += platform.direction
+
             # Update player position
             self.rect.x += dif_x
             self.rect.y += dif_y
@@ -357,6 +379,12 @@ class World():
                 if tile == 6:
                     can = Cans(columnCount * tileSize, rowCount * tileSize + 30)
                     cansGroup.add(can)
+                if tile == 7:
+                    platform = Platform(columnCount * tileSize, rowCount * tileSize, 1, 0) # Horizontal moving platforms
+                    platformGroup.add(platform)
+                if tile == 8:
+                    platform = Platform(columnCount * tileSize, rowCount * tileSize, 0, 1) # Vertical moving platforms
+                    platformGroup.add(platform)
                 columnCount += 1
             rowCount +=1
     
@@ -422,8 +450,32 @@ class Recyclebin(pygame.sprite.Sprite):
             self.rect = self.image.get_rect()
             self.rect.x = x
             self.rect.y = y
-            
-            
+
+
+########## PLATFORMS ##########
+
+class Platform(pygame.sprite.Sprite):
+        def __init__(self, x, y, moveX, moveY):
+            pygame.sprite.Sprite.__init__(self)
+            platformImage= pygame.image.load('assets/platform.png')
+            self.image = pygame.transform.scale(platformImage, (tileSize, tileSize // 2))
+            self.rect = self.image.get_rect()
+            self.rect.x = x
+            self.rect.y = y
+            self.direction = 1
+            self.counter = 0
+            self.moveX = moveX
+            self.moveY = moveY
+
+# Override update method to make platforms moves
+        def update(self):
+            self.rect.x += self.direction * self.moveX
+            self.rect.y += self.direction * self.moveY
+            self.counter += 1
+            if abs(self.counter) > 40:
+                self.direction *= -1
+                self.counter *=-1
+
 ########## MAIN GAME ##########
 
 # Connect to database
@@ -440,6 +492,7 @@ enemyGroup = pygame.sprite.Group()
 garbageGroup = pygame.sprite.Group()
 cansGroup = pygame.sprite.Group()
 recycleBinGroup = pygame.sprite.Group()
+platformGroup = pygame.sprite.Group()
 
 # Creare Buttons instances
 restartButton = Button(screenWidth // 2 - 50, screenHeight // 2 + 100, restartImage)
@@ -475,6 +528,7 @@ while runGame:
         if gameState == "Playing":
             elapsedTime = (pygame.time.get_ticks() - startTime) / 1000  # Timer - Convert to seconds
             enemyGroup.update()
+            platformGroup.update()
             if pygame.sprite.spritecollide(player, cansGroup, True):
                 pickupSound.play()
                 cansScore += 1
@@ -487,6 +541,7 @@ while runGame:
         garbageGroup.draw(screen)
         cansGroup.draw(screen)
         recycleBinGroup.draw(screen)
+        platformGroup.draw(screen)
         gameState = player.update(gameState)
 
         if gameState == "GameOver":
@@ -510,10 +565,10 @@ while runGame:
                 addPlayerScore = f"INSERT INTO highscores(playername, score, time) VALUES ('{playerName}', '{cansScore}', '{elapsedTime:.2f}')"
                 if dbWriteState:
                     executeQuery(connection, addPlayerScore)
-                    dbexport = executeReadQuery(connection, selectHighScores)
+                    dbexport = executeReadQuery(connection, selectHighScores) # Return the 3 best scores
                     print(dbexport)
-                    dbWriteState = False
-                scoreBoard()
+                    dbWriteState = False # Flag to write only once to the database
+                scoreBoard() # Show high scores board
                 if restartButton.draw():
                     levelIndex = 0
                     world = resetLevel(levelIndex)
