@@ -141,7 +141,7 @@ def executeReadQuery(connection, query):
     except Error as e:
         print(f"The error '{e}' occurred")
 
-# Show high scores table
+# Show high scores board
 def scoreBoard():
     #rect = pygame.Rect((screenWidth / 2 - 210, 30), (screenWidth / 2, 210))
     rect = pygame.Surface((520,200), pygame.SRCALPHA, 32)
@@ -168,6 +168,7 @@ def scoreBoard():
         screen.blit(timeText, (screenWidth / 2 + 160, y_pos))
         y_pos += 40
 
+
 ########## SQL QUERIES ##########
 
 createUserTable = """
@@ -180,6 +181,7 @@ time float
 """
 
 selectHighScores = "SELECT playername, score, time FROM highscores ORDER BY score DESC, time ASC LIMIT 3"
+
 
 ########## BUTTON ##########
 
@@ -476,6 +478,7 @@ class Platform(pygame.sprite.Sprite):
             if abs(self.counter) > 40:
                 self.direction *= -1
                 self.counter *=-1
+
 
 ########## MAIN GAME ##########
 
