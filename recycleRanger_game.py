@@ -102,7 +102,7 @@ def inputName(playerName):
             else:
                 if len(playerName) < 12:  # maximum 12 characters
                     playerName += event.unicode
-    drawText('Give your Name: ', nameFont, BROWN, 130, 250)
+    drawText('Enter your Name: ', nameFont, BROWN, 130, 250)
     pygame.draw.rect(screen, WHITE, uiRect)
     inputSurface = nameFont.render(playerName, True, BROWN)
     screen.blit(inputSurface, (uiRect.x+5, uiRect.y))
@@ -310,14 +310,15 @@ class Player():
                 # Check for collision in x axis
                 if platform.rect.colliderect(self.rect.x, self.rect.y + dif_y, self.width, self.height):
                     # Check if player is below the platform
-                    if abs((self.rect.top + dif_y) - platform.rect.bottom) < collisionThreshold:
+                    if abs((self.rect.top + dif_y) - platform.rect.bottom) <= collisionThreshold:
                         self.jump = 0
                         dif_y = platform.rect.bottom - self.rect.top # Stop because player hit platform
                     # Check if player is above platform
-                    elif abs((self.rect.bottom + dif_y) - platform.rect.top) < collisionThreshold:
+                    elif abs((self.rect.bottom + dif_y) - platform.rect.top) <= collisionThreshold:
                         self.rect.bottom = platform.rect.top - 1 # Stop because player standing on the platform
                         self.jump = 0
-                        self.isJump = False
+                        if key[pygame.K_SPACE] == False:
+                            self.isJump = False  # Disable double jump
                     # Move player together with platform
                     if platform.moveX != 0:
                         self.rect.x += platform.direction
