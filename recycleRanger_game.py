@@ -1,9 +1,11 @@
 import pygame
 import sys
 import random
+import sqlite3
 from pygame.locals import *
 from pygame import mixer
 from levels import *
+from sqlite3 import Error
 
 # Initialize pygame and mixer
 pygame.init()
@@ -26,6 +28,7 @@ FPS = 40
 scoreFont = pygame.font.Font('assets/VT323.ttf', 32)
 msgFont = pygame.font.Font('assets/VT323.ttf', 100)
 scoreMsgFont = pygame.font.Font('assets/VT323.ttf', 80)
+nameFont = pygame.font.Font('assets/VT323.ttf', 40)
 
 # Game variables
 tileSize = 40
@@ -35,6 +38,8 @@ levelIndex = 0
 maxLevel = len(levelList) - 1
 cansScore = 0
 playerName = ""
+elapsedTime = 0
+dbWriteState = True
 
 # Colors
 WHITE = (255, 255, 255)
@@ -43,7 +48,7 @@ BROWN = (125, 25, 3)
 RED = (255, 0, 0)
 
 # User Input Rect
-uiRect = pygame.Rect(400, 400, 320, 50)
+uiRect = pygame.Rect(400, 250, 320, 40)
 
 # Create game window
 screen = pygame.display.set_mode(SCREENSIZE)
@@ -70,6 +75,7 @@ pickupSound.set_volume(0.1)
 
 ########## FUNCTIONS ##########
 
+# Reset Level
 def resetLevel(levelIndex):
     enemyGroup.empty()
     garbageGroup.empty()
@@ -78,10 +84,12 @@ def resetLevel(levelIndex):
     world = World(levelList[levelIndex])
     return world
 
+# Draw text to screen
 def drawText(text, font, color, x, y):
     textImage = font.render(text, True, color)
     screen.blit(textImage, (x, y))
 
+# Player name input box
 def inputName(playerName):
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -91,13 +99,86 @@ def inputName(playerName):
             if event.key == pygame.K_BACKSPACE:
                 playerName = playerName[:-1]
             else:
-                playerName += event.unicode
+                if len(playerName) < 12:  # maximum 12 characters
+                    playerName += event.unicode
+    drawText('Give your Name: ', nameFont, BROWN, 130, 250)
     pygame.draw.rect(screen, WHITE, uiRect)
-    inputSurface = scoreFont.render(playerName, True, BLUE)
-    screen.blit(inputSurface, (uiRect.x+5, uiRect.y+5))
-    uiRect.w = max(100, inputSurface.get_width()+10)
+    inputSurface = nameFont.render(playerName, True, BROWN)
+    screen.blit(inputSurface, (uiRect.x+5, uiRect.y))
+    uiRect.w = max(150, inputSurface.get_width()+10)
     return playerName
 
+# DB Create connection
+def createConnection(path):
+    connection = None
+    try:
+        connection = sqlite3.connect(path)
+        print("Connection to SQLite DB successful")
+    except Error as e:
+        print(f"The error '{e}' occured")
+    return connection
+
+# DB Execute write SQL query
+def executeQuery(connection, query):
+    cursor = connection.cursor()
+    try:
+        cursor.execute(query)
+        connection.commit()
+        print("Query (write) executed successfully")
+    except Error as e:
+        print(f"The error '{e}' occurred")
+
+# DB Execute read SQL query
+def executeReadQuery(connection, query):
+    cursor = connection.cursor()
+    result = None
+    try:
+        cursor.execute(query)
+        result = cursor.fetchall()
+        return result
+        print("Query (read) executed successfully")
+    except Error as e:
+        print(f"The error '{e}' occurred")
+
+# Show high scores table
+def scoreBoard():
+    #rect = pygame.Rect((screenWidth / 2 - 210, 30), (screenWidth / 2, 210))
+    rect = pygame.Surface((520,200), pygame.SRCALPHA, 32)
+    #pygame.draw.rect(screen, WHITE, rect, 250)
+    rect.fill((255, 255, 255, 200))
+    screen.blit(rect, (screenWidth / 2 - 270, 30))
+    
+    header = scoreFont.render("High Scores", True, BROWN)
+    screen.blit(header, (screenWidth / 2 - header.get_width() / 2, 40))
+    header1 = scoreFont.render("Player", True, BLUE)
+    screen.blit(header1, (screenWidth / 2 - 260, 80))
+    header2 = scoreFont.render("Score", True, BLUE)
+    screen.blit(header2, (screenWidth / 2 - header2.get_width(), 80))
+    header3 = scoreFont.render("Time", True, BLUE)
+    screen.blit(header3, (screenWidth / 2 + 160, 80))
+
+    y_pos = 120
+    for playername, score, time in dbexport:
+        playerText = scoreFont.render(playername, True, BLUE)
+        scoreText = scoreFont.render(str(score), True, BLUE)
+        timeText = scoreFont.render(str(time), True, BLUE)
+        screen.blit(playerText, (screenWidth / 2 - 260, y_pos))
+        screen.blit(scoreText, (screenWidth / 2 - header2.get_width(), y_pos))
+        screen.blit(timeText, (screenWidth / 2 + 160, y_pos))
+        y_pos += 40
+
+########## SQL QUERIES ##########
+
+createUserTable = """
+CREATE TABLE IF NOT EXISTS highscores (
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+playername TEXT NOT NULL,
+score INTEGER,
+time float
+);
+"""
+
+selectHighScores = "SELECT playername, score, time FROM highscores ORDER BY score DESC, time ASC LIMIT 3"
 
 ########## BUTTON ##########
 
@@ -345,6 +426,12 @@ class Recyclebin(pygame.sprite.Sprite):
             
 ########## MAIN GAME ##########
 
+# Connect to database
+connection = createConnection("scoredb.sqlite")
+
+# Create DB table if not exists
+executeQuery(connection, createUserTable)
+
 # Create Player instance
 player = Player(tileSize, screenHeight-100)
 
@@ -364,6 +451,7 @@ if levelIndex < len(levelList):
     world = World(levelList[levelIndex])
     runGame = True
 else:
+    print("Level index is outside the levelList")
     runGame = False
 
 # Game Loop
@@ -372,13 +460,14 @@ while runGame:
 
     screen.blit(bgImage, (0, 0))
     drawText('Recycle Ranger', msgFont, BROWN, 130, 150)
-    playerName = inputName(playerName)
 
     if mainMenu == True:
+        playerName = inputName(playerName)
         if startButton.draw():
             mainMenu = False
-            # Start counter time
-            startTime = pygame.time.get_ticks()
+            if playerName == "":
+                playerName =  "No Name"
+            startTime = pygame.time.get_ticks() # Start counter time
         if exitButton.draw():
             runGame = False
     else:
@@ -389,9 +478,9 @@ while runGame:
             if pygame.sprite.spritecollide(player, cansGroup, True):
                 pickupSound.play()
                 cansScore += 1
-            drawText('Score: ' + str(cansScore), scoreFont, WHITE, 40, 10)
-            drawText(f"Time: {elapsedTime:.1f}", scoreFont, WHITE, 200, 10)
-            drawText('Player: ' + playerName, scoreFont, WHITE, 400, 10)
+            drawText('Player: ' + playerName, scoreFont, WHITE, 40, 10)
+            drawText('Score: ' + str(cansScore), scoreFont, WHITE, 350, 10)
+            drawText(f"Time: {elapsedTime:.1f}", scoreFont, WHITE, 550, 10)
             
         
         enemyGroup.draw(screen)
@@ -417,7 +506,14 @@ while runGame:
             else:
                 drawText('YOU WIN', msgFont, BLUE, screenWidth // 2 - 140, screenHeight // 2)
                 drawText('Score: ' + str(cansScore), scoreMsgFont, BROWN, screenWidth // 2 - 120, screenHeight // 2 - 80)
-                drawText(f"Time: {elapsedTime:.1f}", scoreMsgFont, BROWN, screenWidth // 2 - 120, screenHeight // 2 - 180)
+                drawText(f"Time: {elapsedTime:.2f}", scoreMsgFont, BROWN, screenWidth // 2 - 150, screenHeight // 2 - 150)
+                addPlayerScore = f"INSERT INTO highscores(playername, score, time) VALUES ('{playerName}', '{cansScore}', '{elapsedTime:.2f}')"
+                if dbWriteState:
+                    executeQuery(connection, addPlayerScore)
+                    dbexport = executeReadQuery(connection, selectHighScores)
+                    print(dbexport)
+                    dbWriteState = False
+                scoreBoard()
                 if restartButton.draw():
                     levelIndex = 0
                     world = resetLevel(levelIndex)
@@ -426,6 +522,7 @@ while runGame:
                     elapsedTime = 0 # Reset Timer
                     startTime = pygame.time.get_ticks() # Reset timer
                     gameState = "Playing"
+                    dbWriteState = True
     
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
