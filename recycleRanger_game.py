@@ -143,9 +143,7 @@ def executeReadQuery(connection, query):
 
 # Show high scores board
 def scoreBoard():
-    #rect = pygame.Rect((screenWidth / 2 - 210, 30), (screenWidth / 2, 210))
     rect = pygame.Surface((520,200), pygame.SRCALPHA, 32)
-    #pygame.draw.rect(screen, WHITE, rect, 250)
     rect.fill((255, 255, 255, 200))
     screen.blit(rect, (screenWidth / 2 - 270, 30))
     
