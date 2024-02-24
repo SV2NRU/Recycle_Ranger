@@ -5,4 +5,4 @@
 This platform type game made with Pygame for an assignment for my GameDev Master at University of Western Macedonia.
 
 
-![Level2 Screenshot](/screenshots/level2.png | width=300)
+![Level2 Screenshot](/screenshots/level2.png =300x300)
